@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mercados · Painel Financeiro</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<main>
+  <h1>Mercados</h1>
+  <p class="sub">Índices e ações com gráfico de candles. Clique em uma linha para trocar o ativo.</p>
+
+  <div class="pills" id="groups" style="margin-bottom:16px"></div>
+
+  <div class="grid cols-2">
+    <section class="card" id="chart"></section>
+    <section class="card"><h2 id="table-title">Índices</h2><div id="table"></div></section>
+  </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+  renderLayout("index.html");
+
+  // Grupos de ativos exibidos nesta aba (os símbolos válidos vêm do servidor)
+  const GROUPS = {
+    "Índices": ["^BVSP", "^GSPC", "^IXIC", "^DJI", "^FTSE", "^N225"],
+    "Ações Brasil": ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "MGLU3", "BBAS3"],
+    "Ações EUA": ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META"],
+  };
+
+  let panel = null;
+
+  /** Monta tabela + gráfico para o grupo escolhido. */
+  function showGroup(name) {
+    const symbols = GROUPS[name];
+    document.querySelectorAll("#groups .pill").forEach((p) => p.classList.toggle("active", p.dataset.g === name));
+    $("#table-title").textContent = name;
+    panel = createChartPanel({ el: $("#chart"), symbols, initial: symbols[0] });
+    createQuoteTable({ el: $("#table"), symbols, onSelect: (s) => panel.setSymbol(s) });
+  }
+
+  $("#groups").innerHTML = Object.keys(GROUPS).map((g) => `<button class="pill" data-g="${esc(g)}">${esc(g)}</button>`).join("");
+  $("#groups").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showGroup(b.dataset.g); });
+  showGroup("Índices");
+</script>
+</body>
+</html>

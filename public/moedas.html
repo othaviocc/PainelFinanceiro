@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Moedas · Painel Financeiro</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<main>
+  <h1>Moedas</h1>
+  <p class="sub">Dólar, euro e outras moedas em reais. Clique em um cartão para ver o gráfico.</p>
+
+  <div class="grid cols-4" id="cards" style="margin-bottom:16px"><div class="state">Carregando…</div></div>
+
+  <section class="card" id="chart"></section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Conversor</h2>
+    <div class="form-row">
+      <label class="field">Valor <input id="amount" type="number" min="0" step="any" value="100"></label>
+      <label class="field">De <select id="from"></select></label>
+      <label class="field">Para <select id="to"></select></label>
+      <div id="result" style="font-size:20px;font-weight:800;padding-bottom:6px"></div>
+    </div>
+  </section>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+  renderLayout("moedas.html");
+
+  const PAIRS = ["USD-BRL", "EUR-BRL", "GBP-BRL", "JPY-BRL", "ARS-BRL", "CAD-BRL", "AUD-BRL", "CHF-BRL", "CNY-BRL"];
+  const panel = createChartPanel({ el: $("#chart"), symbols: PAIRS, initial: "USD-BRL" });
+  let rates = { BRL: 1 }; // moeda -> quanto vale em reais (para o conversor)
+
+  /** Carrega cotações e desenha os cartões. */
+  async function loadCards() {
+    try {
+      const { quotes } = await api("/quotes?symbols=" + PAIRS.join(","));
+      $("#cards").innerHTML = quotes.map((q) => `
+        <div class="card qcard ${q.symbol === "USD-BRL" ? "selected" : ""}" data-sym="${esc(q.symbol)}">
+          <div class="pair">${esc(niceName(q))} · ${esc(q.symbol)}</div>
+          <div class="price">${fmtNum(q.price, q.price < 1 ? 4 : 2)}</div>
+          ${pctHtml(q.change_pct, true)}
+        </div>`).join("");
+      quotes.forEach((q) => { rates[q.symbol.split("-")[0]] = q.price; });
+      fillSelects();
+      convert();
+    } catch (e) { $("#cards").innerHTML = errorBox(e.message); }
+  }
+
+  $("#cards").addEventListener("click", (ev) => {
+    const c = ev.target.closest(".qcard"); if (!c) return;
+    document.querySelectorAll(".qcard").forEach((x) => x.classList.toggle("selected", x === c));
+    panel.setSymbol(c.dataset.sym);
+  });
+
+  /* Conversor: converte via real (valor * taxa_origem / taxa_destino) */
+  function fillSelects() {
+    const keep = [$("#from").value, $("#to").value];
+    const opts = Object.keys(rates).map((c) => `<option>${esc(c)}</option>`).join("");
+    $("#from").innerHTML = opts; $("#to").innerHTML = opts;
+    $("#from").value = keep[0] || "USD"; $("#to").value = keep[1] || "BRL";
+  }
+  function convert() {
+    const v = parseFloat($("#amount").value);
+    const a = rates[$("#from").value], b = rates[$("#to").value];
+    $("#result").textContent = v >= 0 && a && b ? `${fmtNum(v * a / b)} ${$("#to").value}` : "—";
+  }
+  ["amount", "from", "to"].forEach((id) => $("#" + id).addEventListener("input", convert));
+
+  loadCards();
+  setInterval(loadCards, 30000);
+</script>
+</body>
+</html>

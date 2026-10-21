@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cripto · Painel Financeiro</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<main>
+  <h1>Criptomoedas</h1>
+  <p class="sub">Preços em reais (Mercado Bitcoin) e ranking global por valor de mercado (CoinGecko).</p>
+
+  <div class="grid cols-2">
+    <section class="card" id="chart"></section>
+    <section class="card"><h2>Em reais</h2><div id="brl"></div></section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Top por valor de mercado (USD)</h2>
+    <div id="top"><div class="state">Carregando…</div></div>
+  </section>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+  renderLayout("cripto.html");
+
+  const BRL = ["BTC-BRL", "ETH-BRL", "SOL-BRL", "XRP-BRL", "LTC-BRL", "USDT-BRL"];
+  const panel = createChartPanel({ el: $("#chart"), symbols: BRL, initial: "BTC-BRL" });
+  createQuoteTable({ el: $("#brl"), symbols: BRL, onSelect: (s) => panel.setSymbol(s) });
+
+  /** Ranking global vindo do CoinGecko através do nosso servidor. */
+  async function loadTop() {
+    try {
+      const { coins } = await api("/crypto/top?limit=20");
+      $("#top").innerHTML = `<div class="table-wrap"><table>
+        <thead><tr><th>Moeda</th><th>Preço (USD)</th><th>24h</th><th>Valor de mercado</th><th>Volume 24h</th></tr></thead>
+        <tbody>${coins.map((c) => `<tr>
+          <td><div class="coin">${c.image ? `<img src="${esc(safeUrl(c.image))}" alt="" loading="lazy">` : ""}
+            <span class="sym">${esc(c.symbol)}<small>${esc(c.name)}</small></span></div></td>
+          <td>${fmtMoney(c.price, "USD")}</td><td>${pctHtml(c.change_pct)}</td>
+          <td>${fmtCompact(c.market_cap)}</td><td>${fmtCompact(c.volume)}</td></tr>`).join("")}</tbody></table></div>`;
+    } catch (e) { $("#top").innerHTML = errorBox(e.message); }
+  }
+  loadTop();
+  setInterval(loadTop, 60000);
+</script>
+</body>
+</html>

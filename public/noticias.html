@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notícias · Painel Financeiro</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<main>
+  <h1>Notícias</h1>
+  <p class="sub">Manchetes do mercado, agrupadas por assunto.</p>
+
+  <div class="form-row" style="margin-bottom:16px">
+    <div class="pills" id="topics"></div>
+    <form id="search" class="form-row" style="margin-left:auto">
+      <label class="field">Buscar <input id="q" maxlength="80" placeholder="ex.: Petrobras, Selic…"></label>
+      <button class="btn" type="submit">Buscar</button>
+    </form>
+  </div>
+
+  <div id="list"><div class="state">Carregando…</div></div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+  renderLayout("noticias.html");
+
+  // Cada assunto vira uma busca diferente no servidor
+  const TOPICS = {
+    "Mercado": "mercado financeiro bolsa",
+    "Economia": "economia Selic inflação",
+    "Dólar e câmbio": "dólar câmbio",
+    "Cripto": "bitcoin criptomoedas",
+    "Empresas": "balanço resultado empresas ações",
+    "Internacional": "mercado global Wall Street",
+  };
+  let current = "Mercado";
+
+  async function load(query) {
+    $("#list").innerHTML = loading();
+    try {
+      const { articles } = await api("/news?q=" + encodeURIComponent(query));
+      if (!articles.length) { $("#list").innerHTML = '<div class="state">Nenhuma notícia encontrada.</div>'; return; }
+      $("#list").innerHTML = `<div class="news-list">${articles.map((a) => `
+        <a class="card news" href="${esc(safeUrl(a.url))}" target="_blank" rel="noopener noreferrer">
+          ${a.image ? `<img src="${esc(safeUrl(a.image))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
+          <h3>${esc(a.title)}</h3>
+          ${a.summary ? `<p>${esc(a.summary)}</p>` : ""}
+          <div class="meta">${esc(a.source || "")} · ${esc(timeAgo(a.published_at))}</div>
+        </a>`).join("")}</div>`;
+    } catch (e) { $("#list").innerHTML = errorBox(e.message); }
+  }
+
+  function selectTopic(name) {
+    current = name;
+    document.querySelectorAll("#topics .pill").forEach((p) => p.classList.toggle("active", p.dataset.t === name));
+    load(TOPICS[name]);
+  }
+
+  $("#topics").innerHTML = Object.keys(TOPICS).map((t) => `<button class="pill" data-t="${esc(t)}">${esc(t)}</button>`).join("");
+  $("#topics").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { $("#q").value = ""; selectTopic(b.dataset.t); } });
+  $("#search").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = $("#q").value.trim();
+    if (!q) return selectTopic(current);
+    document.querySelectorAll("#topics .pill").forEach((p) => p.classList.remove("active"));
+    load(q);
+  });
+  selectTopic("Mercado");
+</script>
+</body>
+</html>
